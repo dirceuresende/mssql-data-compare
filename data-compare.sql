@@ -1,4 +1,8 @@
 
+-------------------------------------------
+-- CREATE PRE-REQUIRED OBJECTS
+-------------------------------------------
+
 IF (OBJECT_ID('dbo.fncStringSplit') IS NULL) EXEC('CREATE FUNCTION dbo.fncStringSplit() RETURNS INT AS SELECT 1')
 GO
 
@@ -78,6 +82,10 @@ BEGIN
 END
 GO
 
+
+-------------------------------------------
+-- CREATE MAIN PROCEDURE
+-------------------------------------------
 
 IF (OBJECT_ID('dbo.stpDataCompare') IS NULL) EXEC('CREATE PROCEDURE dbo.stpDataCompare AS SELECT 1')
 GO
@@ -173,9 +181,8 @@ BEGIN
 
 
     -------------------------------------------
-    -- PARAMETERS (YOU CAN CHANGE HERE)
+    -- INCLUDE EXTERNAL PARAMETERS
     -------------------------------------------
-
 
     INSERT INTO #Parameters (
         DatabaseName,
@@ -195,13 +202,14 @@ BEGIN
     -------------------------------------------
     -- EXTRACT COLUMNS METADATA
     -------------------------------------------
-
+    
+    -- Number of Tables being compared
     SET @Total = (SELECT COUNT(*) FROM #Parameters)
 
     WHILE (@Counter <= @Total)
     BEGIN
 
-
+        
         SELECT TOP(1)
             @Database = DatabaseName,
             @Schema = SchemaName,
@@ -212,6 +220,7 @@ BEGIN
             [Line] = @Counter
 
 
+        -- Create all columns metadata from compared tables
         SET @Cmd = '
         SELECT
             ''' + @Database + ''' AS DatabaseName,
@@ -253,12 +262,13 @@ BEGIN
     -------------------------------------------
 
     SET @Counter = 1
-    SET @Total = (@Total / 2)
+    SET @Total = (@Total / 2) -- Every row is a table, but they work in pairs of two tables being compared
 
+    -- Iterate over every pair of tables being compared
     WHILE(@Counter <= @Total)
     BEGIN
     
-    
+        -- First table in the pair of two tables to be compared (Source)
         SELECT TOP(1)
             @Database = DatabaseName,
             @Schema = SchemaName,
@@ -270,6 +280,7 @@ BEGIN
             Line = ((@Counter - 1) * 2) + 1
 
 
+        -- Second table in the pair of two tables to be compared (Destination)
         SELECT TOP(1)
             @DatabaseDestination = DatabaseName,
             @SchemaDestination = SchemaName,
@@ -292,10 +303,11 @@ BEGIN
             AND A.SchemaName = @Schema
             AND A.TableName = @Table
 
-
-    
+        
+        
         TRUNCATE TABLE #KeyColumns
 
+        -- Insert the KeyColumns to be compared in JOIN clause. It splits into multiple rows in case of composite keys (multiple key columns)
         INSERT INTO #KeyColumns
         SELECT 
             ROW_NUMBER() OVER(ORDER BY A.Id) AS Line,
@@ -308,12 +320,14 @@ BEGIN
             A.Id = B.Id
 
 
+        -- Iterate over every column in both tables being compared
         WHILE (@CounterColumn <= @TotalColumns)
         BEGIN
         
         
             SET @CurrentColumn = NULL
-        
+            
+            -- Select the column to be compared in this iteration. Only columns with the same name in both tables will return.
             SELECT TOP(1)
                 @CurrentColumn = A.ColumnName
             FROM
@@ -322,7 +336,8 @@ BEGIN
             WHERE
                 A.column_id = @CounterColumn
 
-
+            
+            -- If we have only 1 KeyColumn, that's easy :)
             IF ((SELECT COUNT(*) FROM #KeyColumns) = 1)
             BEGIN
             
@@ -330,7 +345,7 @@ BEGIN
                 SET @CmdJoin = 'A.[' + @KeyColumns + '] = B.[' + @KeyColumnsDestination + ']'
 
             END
-            ELSE BEGIN
+            ELSE BEGIN -- But if we have multiple KeyColumns, then we have way more work to do :(
             
 
                 SET @CmdKeyColumns = 'CONCAT('
@@ -338,10 +353,12 @@ BEGIN
                 SET @CounterKeyColumns = 1
                 SET @NumberOfKeyColumns = (SELECT COUNT(*) FROM #KeyColumns)
 
+                -- Iterate over each KeyColumn
                 WHILE(@CounterKeyColumns <= @NumberOfKeyColumns)
                 BEGIN
                 
-
+                
+                    -- Set the pair of Source and Destination KeyColumn for each interation to create the KeyColumns fieldlist and the JOIN clauses for multiple keys.
                     SELECT
                         @CurrentKeyColumnSource = KeyColumnSource,
                         @CurrentKeyColumnDestination = KeyColumnDestination
@@ -365,23 +382,24 @@ BEGIN
             END
 
 
+            -- Create the full SQL query to compare all the data. This is where the magic happens :P
             SET @Cmd = '
-    SELECT
-        ''' + @Database + ''' AS [Database], ' +
-        '''' + @Schema + ''' AS [Schema], ' +
-        '''' + @Table + ''' AS [Table], ' +
-        '' + @CmdKeyColumns + ' AS [KeyValue], ' +
-        '''' + @CurrentColumn + ''' AS [ColumnName], ' +
-        'CONVERT(NVARCHAR(500), A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
-        'CONVERT(NVARCHAR(500), B.[' + @CurrentColumn + ']) AS [ValueDestination]
-    FROM
-        [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-        FULL JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
-    WHERE
-        ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
+SELECT
+    ''' + @Database + ''' AS [Database], ' +
+    '''' + @Schema + ''' AS [Schema], ' +
+    '''' + @Table + ''' AS [Table], ' +
+    '' + @CmdKeyColumns + ' AS [KeyValue], ' +
+    '''' + @CurrentColumn + ''' AS [ColumnName], ' +
+    'CONVERT(NVARCHAR(500), A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
+    'CONVERT(NVARCHAR(500), B.[' + @CurrentColumn + ']) AS [ValueDestination]
+FROM
+    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+    FULL JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+WHERE
+    ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
 
 
-        
+            -- Append the results for each column comparison in the final table
             INSERT INTO #Results
             EXEC(@Cmd)
 
@@ -397,6 +415,7 @@ BEGIN
     END
 
 
+    -- Display all the results, finally :D
     SELECT * FROM #Results
     ORDER BY KeyValue, ColumnName
 
