@@ -21,7 +21,7 @@ BEGIN
 
 
     IF (LEN(@Ds_Text) > 0)
-       SET @Ds_Text = @Ds_Text + @Ds_Delimiter   
+        SET @Ds_Text = @Ds_Text + @Ds_Delimiter   
 
     
     WHILE (LEN(@Ds_Text) > 0)
