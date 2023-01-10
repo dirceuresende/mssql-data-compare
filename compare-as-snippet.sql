@@ -24,32 +24,32 @@ BEGIN
     IF (LEN(@Ds_Text) > 0)
         SET @Ds_Text = @Ds_Text + @Ds_Delimiter   
 
-    
+
     WHILE (LEN(@Ds_Text) > 0)
     BEGIN  
-    
-        
+
+
         SET @DsString = LTRIM(SUBSTRING(@Ds_Text, 1, CHARINDEX(@Ds_Delimiter, @Ds_Text) - 1))  
 
 
         IF (@DsPiece = ' ')
             SET @DsPiece = '' 
-        
-        
+
+
         IF ((@NumberOfPieces = 1 AND LEN(@DsPiece) > 0) OR @NumberOfPieces > 1)
         BEGIN
-            
+
             INSERT INTO @Results ( Id, Piece )
             VALUES ( @NumberOfPieces, LTRIM(RTRIM(@DsPiece)) ) 
-                
+
             SET @NumberOfPieces = @NumberOfPieces + 1
-            
+
         END
-        
-        
+
+
         SET @DsPiece = @DsString
         SET @Ds_Text = SUBSTRING(@Ds_Text, CHARINDEX(@Ds_Delimiter, @Ds_Text) + 1, LEN(@Ds_Text))
-          
+
     END  
 
 
@@ -97,7 +97,7 @@ DECLARE
     @CurrentKeyColumnSource NVARCHAR(500),
     @CurrentKeyColumnDestination NVARCHAR(500),
 
-    @Debug BIT = 0
+    @Debug BIT = 1
 
 
 
@@ -172,9 +172,9 @@ VALUES
     'SalesOrderNumber, SalesOrderLineNumber'
 ),
 (
-    '',   -- DatabaseName - NVARCHAR(500)
+    'dirceuresende',   -- DatabaseName - NVARCHAR(500)
     'dbo',   -- SchemaName - NVARCHAR(500)
-    '##Compare',    -- TableName - NVARCHAR(500)
+    'FactInternetSales2',    -- TableName - NVARCHAR(500)
     'SalesOrderNumber, SalesOrderLineNumber'
 )
 
@@ -182,14 +182,14 @@ VALUES
 -------------------------------------------
 -- EXTRACT COLUMNS METADATA
 -------------------------------------------
-    
+
 -- Number of Tables being compared
 SET @Total = (SELECT COUNT(*) FROM #Parameters)
 
 WHILE (@Counter <= @Total)
 BEGIN
 
-        
+
     SELECT TOP(1)
         @Database = DatabaseName,
         @Schema = SchemaName,
@@ -247,7 +247,7 @@ SET @Total = (@Total / 2) -- Every row is a table, but they work in pairs of two
 -- Iterate over every pair of tables being compared
 WHILE(@Counter <= @Total)
 BEGIN
-    
+
     -- First table in the pair of two tables to be compared (Source)
     SELECT TOP(1)
         @Database = DatabaseName,
@@ -271,9 +271,9 @@ BEGIN
     WHERE
         Line = ((@Counter - 1) * 2) + 2
 
-    
+
     SET @CounterColumn = 1
-    
+
     SELECT 
         @TotalColumns = COUNT(*)
     FROM
@@ -283,8 +283,8 @@ BEGIN
         AND A.SchemaName = @Schema
         AND A.TableName = @Table
 
-        
-        
+
+
     TRUNCATE TABLE #KeyColumns
 
     -- Insert the KeyColumns to be compared in JOIN clause. It splits into multiple rows in case of composite keys (multiple key columns)
@@ -303,14 +303,14 @@ BEGIN
     -- If we have only 1 KeyColumn, that's easy :)
     IF ((SELECT COUNT(*) FROM #KeyColumns) = 1)
     BEGIN
-            
+
         SET @CmdKeyColumns = 'A.[' + @KeyColumns + ']'
         SET @CmdJoin = 'A.[' + @KeyColumns + '] = B.[' + @KeyColumnsDestination + ']'
         SET @CmdWhereOnlyInLeft = 'B.[' + @KeyColumns + '] IS NULL'
 
     END
     ELSE BEGIN -- But if we have multiple KeyColumns, then we have way more work to do :(
-            
+
 
         SET @CmdKeyColumns = 'CONCAT('
         SET @CmdJoin = ''
@@ -321,8 +321,8 @@ BEGIN
         -- Iterate over each KeyColumn
         WHILE(@CounterKeyColumns <= @NumberOfKeyColumns)
         BEGIN
-                
-                
+
+
             -- Set the pair of Source and Destination KeyColumn for each interation to create the KeyColumns fieldlist and the JOIN clauses for multiple keys.
             SELECT
                 @CurrentKeyColumnSource = KeyColumnSource,
@@ -335,7 +335,7 @@ BEGIN
 
             SET @CmdKeyColumns += IIF(@CounterKeyColumns > 1, ','' | '', ', '') + 'A.[' + @CurrentKeyColumnSource + ']'
             SET @CmdJoin += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'A.[' + @CurrentKeyColumnSource + '] = B.[' + @CurrentKeyColumnDestination + ']'
-            SET @CmdWhereOnlyInLeft += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'B.[' + @KeyColumns + '] IS NULL'
+            SET @CmdWhereOnlyInLeft += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'B.[' + @CurrentKeyColumnSource + '] IS NULL'
 
             SET @CounterKeyColumns += 1
 
@@ -351,21 +351,21 @@ BEGIN
 
     -- Create the full SQL query to compare all the data. This is where the magic happens :P
     SET @Cmd = '
-SELECT
-    ''' + @Database + ''' AS [Database], ' +
-    '''' + @Schema + ''' AS [Schema], ' +
-    '''' + @Table + ''' AS [Table], ' +
-    '' + @CmdKeyColumns + ' AS [KeyValue], ' +
-    '''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
-    'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
-    'NULL AS [ValueDestination],
-    1 AS [Type],
-    ''1-OnlyInLeft'' AS [TypeDesc]
-FROM
-    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-    LEFT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
-WHERE
-    ' + @CmdWhereOnlyInLeft
+    SELECT
+        ''' + @Database + ''' AS [Database], ' +
+        '''' + @Schema + ''' AS [Schema], ' +
+        '''' + @Table + ''' AS [Table], ' +
+        '' + @CmdKeyColumns + ' AS [KeyValue], ' +
+        '''' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@CmdKeyColumns, 'CONCAT(', ''), 'A.[', ''), ']', ''), '''', ''), ')', ''), ', | , ', ', ') + ''' AS [ColumnName], ' +
+        'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
+        'NULL AS [ValueDestination],
+        1 AS [Type],
+        ''1-OnlyInLeft'' AS [TypeDesc]
+    FROM
+        [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+        LEFT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+    WHERE
+        ' + @CmdWhereOnlyInLeft
 
 
     -- Append the results for each column comparison in the final table
@@ -378,21 +378,21 @@ WHERE
 
     -- Create the full SQL query to compare all the data. This is where the magic happens :P
     SET @Cmd = '
-SELECT
-    ''' + @Database + ''' AS [Database], ' +
-    '''' + @Schema + ''' AS [Schema], ' +
-    '''' + @Table + ''' AS [Table], ' +
-    '' + REPLACE(@CmdKeyColumns, 'A.[', 'B.[') + ' AS [KeyValue], ' +
-    '''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
-    'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
-    'NULL AS [ValueDestination],
-    2 AS [Type],
-    ''2-OnlyInRight'' AS [TypeDesc]
-FROM
-    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-    RIGHT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
-WHERE
-    ' + REPLACE(@CmdWhereOnlyInLeft, 'B.[', 'A.[')
+    SELECT
+        ''' + @Database + ''' AS [Database], ' +
+        '''' + @Schema + ''' AS [Schema], ' +
+        '''' + @Table + ''' AS [Table], ' +
+        '' + REPLACE(@CmdKeyColumns, 'A.[', 'B.[') + ' AS [KeyValue], ' +
+        '''' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@CmdKeyColumns, 'CONCAT(', ''), 'A.[', ''), ']', ''), '''', ''), ')', ''), ', | , ', ', ') + ''' AS [ColumnName], ' +
+        'CONVERT(SQL_VARIANT, ' + REPLACE(@CmdKeyColumns, 'A.[', 'B.[') + ') AS [ValueSource], ' +
+        'NULL AS [ValueDestination],
+        2 AS [Type],
+        ''2-OnlyInRight'' AS [TypeDesc]
+    FROM
+        [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+        RIGHT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+    WHERE
+        ' + REPLACE(@CmdWhereOnlyInLeft, 'B.[', 'A.[')
 
 
     -- Append the results for each column comparison in the final table
@@ -406,10 +406,10 @@ WHERE
     -- Iterate over every column in both tables being compared
     WHILE (@CounterColumn <= @TotalColumns)
     BEGIN
-        
-        
+
+
         SET @CurrentColumn = NULL
-            
+
 
         -- Select the column to be compared in this iteration. Only columns with the same name in both tables will return.
         SELECT TOP(1)
@@ -425,28 +425,28 @@ WHERE
 
         IF (NOT EXISTS(SELECT TOP(1) NULL FROM #KeyColumns WHERE KeyColumnSource = @CurrentColumn))
         BEGIN
-            
+
             -- Create the full SQL query to compare all the data. This is where the magic happens :P
             SET @Cmd = '
-SELECT
-    ''' + @Database + ''' AS [Database], ' +
-    '''' + @Schema + ''' AS [Schema], ' +
-    '''' + @Table + ''' AS [Table], ' +
-    '' + @CmdKeyColumns + ' AS [KeyValue], ' +
-    '''' + @CurrentColumn + ''' AS [ColumnName], ' +
-    'CONVERT(SQL_VARIANT, A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
-    'CONVERT(SQL_VARIANT, B.[' + @CurrentColumn + ']) AS [ValueDestination],
-    3 AS [Type],
-    ''3-DifferentData'' AS [TypeDesc]
-FROM
-    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-    JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
-WHERE
-    ' + CASE 
-            WHEN (@CurrentColumnType IN ('varchar', 'nvarchar', 'nchar', 'char')) THEN 'ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
-            WHEN (@CurrentColumnType IN ('date', 'datetime', 'timestamp')) THEN 'ISNULL(A.[' + @CurrentColumn + '], ''1900-01-01'') <> ISNULL(B.[' + @CurrentColumn + '], ''1900-01-01'')'
-            ELSE 'ISNULL(A.[' + @CurrentColumn + '], -123) <> ISNULL(B.[' + @CurrentColumn + '], -123)'
-        END
+            SELECT
+                ''' + @Database + ''' AS [Database], ' +
+                '''' + @Schema + ''' AS [Schema], ' +
+                '''' + @Table + ''' AS [Table], ' +
+                '' + @CmdKeyColumns + ' AS [KeyValue], ' +
+                '''' + @CurrentColumn + ''' AS [ColumnName], ' +
+                'CONVERT(SQL_VARIANT, A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
+                'CONVERT(SQL_VARIANT, B.[' + @CurrentColumn + ']) AS [ValueDestination],
+                3 AS [Type],
+                ''3-DifferentData'' AS [TypeDesc]
+            FROM
+                [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+                JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+            WHERE
+                ' + CASE 
+                        WHEN (@CurrentColumnType IN ('varchar', 'nvarchar', 'nchar', 'char')) THEN 'ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
+                        WHEN (@CurrentColumnType IN ('date', 'datetime', 'timestamp')) THEN 'ISNULL(A.[' + @CurrentColumn + '], ''1900-01-01'') <> ISNULL(B.[' + @CurrentColumn + '], ''1900-01-01'')'
+                        ELSE 'ISNULL(A.[' + @CurrentColumn + '], -123) <> ISNULL(B.[' + @CurrentColumn + '], -123)'
+                    END
 
             -- Append the results for each column comparison in the final table
             IF (@Debug = 1) PRINT @Cmd
