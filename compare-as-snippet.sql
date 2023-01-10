@@ -134,23 +134,23 @@ CREATE TABLE #Columns (
 
 IF (OBJECT_ID('tempdb..#Results') IS NOT NULL) DROP TABLE #Results
 CREATE TABLE #Results (
-    [DatabaseName]		NVARCHAR(500),
-    [SchemaName]		NVARCHAR(500),
-    [TableName]			NVARCHAR(500),
-    [KeyValue]			NVARCHAR(500),
-    [ColumnName]		NVARCHAR(500),
-    [ValueSource]		SQL_VARIANT,
-    [ValueDestination]	SQL_VARIANT,
-    [Type]				INT,
-    [TypeDesc]			NVARCHAR(100)
+    [DatabaseName]      NVARCHAR(500),
+    [SchemaName]	    NVARCHAR(500),
+    [TableName]		    NVARCHAR(500),
+    [KeyValue]		    NVARCHAR(500),
+    [ColumnName]	    NVARCHAR(500),
+    [ValueSource]       SQL_VARIANT,
+    [ValueDestination]  SQL_VARIANT,
+    [Type]			    INT,
+    [TypeDesc]		    NVARCHAR(100)
 )
 
 
 IF (OBJECT_ID('tempdb..#KeyColumns') IS NOT NULL) DROP TABLE #KeyColumns
 CREATE TABLE #KeyColumns (
-    [Line]                 BIGINT,
-    [KeyColumnSource]      NVARCHAR(500),
-    [KeyColumnDestination] NVARCHAR(500)
+    [Line]                  BIGINT,
+    [KeyColumnSource]       NVARCHAR(500),
+    [KeyColumnDestination]  NVARCHAR(500)
 )
 
 
