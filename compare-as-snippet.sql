@@ -83,12 +83,12 @@ DECLARE
     @Cmd NVARCHAR(MAX),
     @CmdJoin NVARCHAR(MAX),
     @CmdKeyColumns NVARCHAR(MAX),
-	@CmdWhereOnlyInLeft NVARCHAR(MAX),
+    @CmdWhereOnlyInLeft NVARCHAR(MAX),
     @Counter INT = 1,
     @Total INT,
 
     @CurrentColumn NVARCHAR(500),
-	@CurrentColumnType VARCHAR(128),
+    @CurrentColumnType VARCHAR(128),
     @CounterColumn INT = 1,
     @TotalColumns INT,
 
@@ -97,7 +97,7 @@ DECLARE
     @CurrentKeyColumnSource NVARCHAR(500),
     @CurrentKeyColumnDestination NVARCHAR(500),
 
-	@Debug BIT = 0
+    @Debug BIT = 0
 
 
 
@@ -107,29 +107,29 @@ DECLARE
 
 IF (OBJECT_ID('tempdb..#Parameters') IS NOT NULL) DROP TABLE #Parameters
 CREATE TABLE #Parameters (
-    [Line]			 INT IDENTITY(1, 1),
-    [DatabaseName]	 NVARCHAR(500),
-    [SchemaName]     NVARCHAR(500),
-    [TableName]      NVARCHAR(500),
-    [KeyColumns]	 NVARCHAR(MAX)
+    [Line]			    INT IDENTITY(1, 1),
+    [DatabaseName]	    NVARCHAR(500),
+    [SchemaName]        NVARCHAR(500),
+    [TableName]         NVARCHAR(500),
+    [KeyColumns]	    NVARCHAR(MAX)
 )
 
 
 IF (OBJECT_ID('tempdb..#Columns') IS NOT NULL) DROP TABLE #Columns
 CREATE TABLE #Columns (
-    [DatabaseName]	 NVARCHAR(500),
-    [SchemaName]     NVARCHAR(500),
-    [TableName]      NVARCHAR(500),
-    [column_id]      INT,
-    [ColumnName]     NVARCHAR(500),
-    [ColumnTypeName] NVARCHAR(500),
-    [max_length]     SMALLINT,
-    [precision]      TINYINT,
-    [scale]          TINYINT,
-    [collation_name] NVARCHAR(500),
-    [definition]     NVARCHAR(MAX),
-    [is_computed]    BIT,
-    [is_nullable]    BIT
+    [DatabaseName]	    NVARCHAR(500),
+    [SchemaName]        NVARCHAR(500),
+    [TableName]         NVARCHAR(500),
+    [column_id]         INT,
+    [ColumnName]        NVARCHAR(500),
+    [ColumnTypeName]    NVARCHAR(500),
+    [max_length]        SMALLINT,
+    [precision]         TINYINT,
+    [scale]             TINYINT,
+    [collation_name]    NVARCHAR(500),
+    [definition]        NVARCHAR(MAX),
+    [is_computed]       BIT,
+    [is_nullable]       BIT
 )
 
 IF (OBJECT_ID('tempdb..#Results') IS NOT NULL) DROP TABLE #Results
@@ -141,8 +141,8 @@ CREATE TABLE #Results (
     [ColumnName]		NVARCHAR(500),
     [ValueSource]		SQL_VARIANT,
     [ValueDestination]	SQL_VARIANT,
-	[Type]				INT,
-	[TypeDesc]			NVARCHAR(100)
+    [Type]				INT,
+    [TypeDesc]			NVARCHAR(100)
 )
 
 
@@ -159,23 +159,23 @@ CREATE TABLE #KeyColumns (
 -------------------------------------------
 
 INSERT INTO #Parameters (
-	DatabaseName,
-	SchemaName,
-	TableName,
-	KeyColumns
+    DatabaseName,
+    SchemaName,
+    TableName,
+    KeyColumns
 )
 VALUES
 (
-	'AdventureWorksDW2019',   -- DatabaseName - NVARCHAR(500)
-	'dbo',   -- SchemaName - NVARCHAR(500)
-	'FactInternetSales',    -- TableName - NVARCHAR(500)
-	'SalesOrderNumber, SalesOrderLineNumber'
+    'AdventureWorksDW2019',   -- DatabaseName - NVARCHAR(500)
+    'dbo',   -- SchemaName - NVARCHAR(500)
+    'FactInternetSales',    -- TableName - NVARCHAR(500)
+    'SalesOrderNumber, SalesOrderLineNumber'
 ),
 (
-	'',   -- DatabaseName - NVARCHAR(500)
-	'dbo',   -- SchemaName - NVARCHAR(500)
-	'##Compare',    -- TableName - NVARCHAR(500)
-	'SalesOrderNumber, SalesOrderLineNumber'
+    '',   -- DatabaseName - NVARCHAR(500)
+    'dbo',   -- SchemaName - NVARCHAR(500)
+    '##Compare',    -- TableName - NVARCHAR(500)
+    'SalesOrderNumber, SalesOrderLineNumber'
 )
 
 
@@ -300,13 +300,13 @@ BEGIN
         A.Id = B.Id
 
 
-	-- If we have only 1 KeyColumn, that's easy :)
+    -- If we have only 1 KeyColumn, that's easy :)
     IF ((SELECT COUNT(*) FROM #KeyColumns) = 1)
     BEGIN
             
         SET @CmdKeyColumns = 'A.[' + @KeyColumns + ']'
         SET @CmdJoin = 'A.[' + @KeyColumns + '] = B.[' + @KeyColumnsDestination + ']'
-		SET @CmdWhereOnlyInLeft = 'B.[' + @KeyColumns + '] IS NULL'
+        SET @CmdWhereOnlyInLeft = 'B.[' + @KeyColumns + '] IS NULL'
 
     END
     ELSE BEGIN -- But if we have multiple KeyColumns, then we have way more work to do :(
@@ -314,7 +314,7 @@ BEGIN
 
         SET @CmdKeyColumns = 'CONCAT('
         SET @CmdJoin = ''
-		SET @CmdWhereOnlyInLeft = ''
+        SET @CmdWhereOnlyInLeft = ''
         SET @CounterKeyColumns = 1
         SET @NumberOfKeyColumns = (SELECT COUNT(*) FROM #KeyColumns)
 
@@ -335,7 +335,7 @@ BEGIN
 
             SET @CmdKeyColumns += IIF(@CounterKeyColumns > 1, ','' | '', ', '') + 'A.[' + @CurrentKeyColumnSource + ']'
             SET @CmdJoin += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'A.[' + @CurrentKeyColumnSource + '] = B.[' + @CurrentKeyColumnDestination + ']'
-			SET @CmdWhereOnlyInLeft += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'B.[' + @KeyColumns + '] IS NULL'
+            SET @CmdWhereOnlyInLeft += IIF(@CounterKeyColumns > 1, ' AND ', '') + 'B.[' + @KeyColumns + '] IS NULL'
 
             SET @CounterKeyColumns += 1
 
@@ -349,56 +349,56 @@ BEGIN
 
 
 
-	-- Create the full SQL query to compare all the data. This is where the magic happens :P
+    -- Create the full SQL query to compare all the data. This is where the magic happens :P
     SET @Cmd = '
 SELECT
-	''' + @Database + ''' AS [Database], ' +
-	'''' + @Schema + ''' AS [Schema], ' +
-	'''' + @Table + ''' AS [Table], ' +
-	'' + @CmdKeyColumns + ' AS [KeyValue], ' +
-	'''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
-	'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
-	'NULL AS [ValueDestination],
-	1 AS [Type],
-	''1-OnlyInLeft'' AS [TypeDesc]
+    ''' + @Database + ''' AS [Database], ' +
+    '''' + @Schema + ''' AS [Schema], ' +
+    '''' + @Table + ''' AS [Table], ' +
+    '' + @CmdKeyColumns + ' AS [KeyValue], ' +
+    '''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
+    'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
+    'NULL AS [ValueDestination],
+    1 AS [Type],
+    ''1-OnlyInLeft'' AS [TypeDesc]
 FROM
-	[' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-	LEFT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+    LEFT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
 WHERE
-	' + @CmdWhereOnlyInLeft
+    ' + @CmdWhereOnlyInLeft
 
 
     -- Append the results for each column comparison in the final table
-	IF (@Debug = 1) PRINT @Cmd
+    IF (@Debug = 1) PRINT @Cmd
 
-	INSERT INTO #Results
+    INSERT INTO #Results
     EXEC(@Cmd)
 
 
 
-	-- Create the full SQL query to compare all the data. This is where the magic happens :P
+    -- Create the full SQL query to compare all the data. This is where the magic happens :P
     SET @Cmd = '
 SELECT
-	''' + @Database + ''' AS [Database], ' +
-	'''' + @Schema + ''' AS [Schema], ' +
-	'''' + @Table + ''' AS [Table], ' +
-	'' + REPLACE(@CmdKeyColumns, 'A.[', 'B.[') + ' AS [KeyValue], ' +
-	'''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
-	'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
-	'NULL AS [ValueDestination],
-	2 AS [Type],
-	''2-OnlyInRight'' AS [TypeDesc]
+    ''' + @Database + ''' AS [Database], ' +
+    '''' + @Schema + ''' AS [Schema], ' +
+    '''' + @Table + ''' AS [Table], ' +
+    '' + REPLACE(@CmdKeyColumns, 'A.[', 'B.[') + ' AS [KeyValue], ' +
+    '''' + REPLACE(REPLACE(@CmdKeyColumns, 'A.[', ''), ']', '') + ''' AS [ColumnName], ' +
+    'CONVERT(SQL_VARIANT, ' + @CmdKeyColumns + ') AS [ValueSource], ' +
+    'NULL AS [ValueDestination],
+    2 AS [Type],
+    ''2-OnlyInRight'' AS [TypeDesc]
 FROM
-	[' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-	RIGHT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+    RIGHT JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
 WHERE
-	' + REPLACE(@CmdWhereOnlyInLeft, 'B.[', 'A.[')
+    ' + REPLACE(@CmdWhereOnlyInLeft, 'B.[', 'A.[')
 
 
     -- Append the results for each column comparison in the final table
-	IF (@Debug = 1) PRINT @Cmd
+    IF (@Debug = 1) PRINT @Cmd
 
-	INSERT INTO #Results
+    INSERT INTO #Results
     EXEC(@Cmd)
 
 
@@ -414,7 +414,7 @@ WHERE
         -- Select the column to be compared in this iteration. Only columns with the same name in both tables will return.
         SELECT TOP(1)
             @CurrentColumn = A.ColumnName,
-			@CurrentColumnType = A.ColumnTypeName
+            @CurrentColumnType = A.ColumnTypeName
         FROM
             #Columns A
             JOIN #Columns B ON B.ColumnName = A.ColumnName AND NOT (B.DatabaseName = A.DatabaseName AND B.TableName = A.TableName AND B.SchemaName = A.SchemaName)
@@ -423,39 +423,39 @@ WHERE
 
 
 
-		IF (NOT EXISTS(SELECT TOP(1) NULL FROM #KeyColumns WHERE KeyColumnSource = @CurrentColumn))
-		BEGIN
+        IF (NOT EXISTS(SELECT TOP(1) NULL FROM #KeyColumns WHERE KeyColumnSource = @CurrentColumn))
+        BEGIN
             
-			-- Create the full SQL query to compare all the data. This is where the magic happens :P
-			SET @Cmd = '
+            -- Create the full SQL query to compare all the data. This is where the magic happens :P
+            SET @Cmd = '
 SELECT
-	''' + @Database + ''' AS [Database], ' +
-	'''' + @Schema + ''' AS [Schema], ' +
-	'''' + @Table + ''' AS [Table], ' +
-	'' + @CmdKeyColumns + ' AS [KeyValue], ' +
-	'''' + @CurrentColumn + ''' AS [ColumnName], ' +
-	'CONVERT(SQL_VARIANT, A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
-	'CONVERT(SQL_VARIANT, B.[' + @CurrentColumn + ']) AS [ValueDestination],
-	3 AS [Type],
-	''3-DifferentData'' AS [TypeDesc]
+    ''' + @Database + ''' AS [Database], ' +
+    '''' + @Schema + ''' AS [Schema], ' +
+    '''' + @Table + ''' AS [Table], ' +
+    '' + @CmdKeyColumns + ' AS [KeyValue], ' +
+    '''' + @CurrentColumn + ''' AS [ColumnName], ' +
+    'CONVERT(SQL_VARIANT, A.[' + @CurrentColumn + ']) AS [ValueSource], ' +
+    'CONVERT(SQL_VARIANT, B.[' + @CurrentColumn + ']) AS [ValueDestination],
+    3 AS [Type],
+    ''3-DifferentData'' AS [TypeDesc]
 FROM
-	[' + @Database + '].[' + @Schema + '].[' + @Table + '] A
-	JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
+    [' + @Database + '].[' + @Schema + '].[' + @Table + '] A
+    JOIN [' + @DatabaseDestination + '].[' + @SchemaDestination + '].[' + @TableDestination + '] B ON ' + @CmdJoin + '		
 WHERE
-	' + CASE 
-			WHEN (@CurrentColumnType IN ('varchar', 'nvarchar', 'nchar', 'char')) THEN 'ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
-			WHEN (@CurrentColumnType IN ('date', 'datetime', 'timestamp')) THEN 'ISNULL(A.[' + @CurrentColumn + '], ''1900-01-01'') <> ISNULL(B.[' + @CurrentColumn + '], ''1900-01-01'')'
-			ELSE 'ISNULL(A.[' + @CurrentColumn + '], -123) <> ISNULL(B.[' + @CurrentColumn + '], -123)'
-		END
+    ' + CASE 
+            WHEN (@CurrentColumnType IN ('varchar', 'nvarchar', 'nchar', 'char')) THEN 'ISNULL(A.[' + @CurrentColumn + '], '''') <> ISNULL(B.[' + @CurrentColumn + '], '''')'
+            WHEN (@CurrentColumnType IN ('date', 'datetime', 'timestamp')) THEN 'ISNULL(A.[' + @CurrentColumn + '], ''1900-01-01'') <> ISNULL(B.[' + @CurrentColumn + '], ''1900-01-01'')'
+            ELSE 'ISNULL(A.[' + @CurrentColumn + '], -123) <> ISNULL(B.[' + @CurrentColumn + '], -123)'
+        END
 
-			-- Append the results for each column comparison in the final table
-			IF (@Debug = 1) PRINT @Cmd
+            -- Append the results for each column comparison in the final table
+            IF (@Debug = 1) PRINT @Cmd
 
-			INSERT INTO #Results
-			EXEC(@Cmd)
+            INSERT INTO #Results
+            EXEC(@Cmd)
 
 
-		END
+        END
 
 
         SET @CounterColumn += 1
