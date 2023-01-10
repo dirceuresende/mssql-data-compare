@@ -107,42 +107,42 @@ DECLARE
 
 IF (OBJECT_ID('tempdb..#Parameters') IS NOT NULL) DROP TABLE #Parameters
 CREATE TABLE #Parameters (
-    [Line]			    INT IDENTITY(1, 1),
-    [DatabaseName]	    NVARCHAR(500),
-    [SchemaName]        NVARCHAR(500),
-    [TableName]         NVARCHAR(500),
-    [KeyColumns]	    NVARCHAR(MAX)
+    [Line]			        INT IDENTITY(1, 1),
+    [DatabaseName]	        NVARCHAR(500),
+    [SchemaName]            NVARCHAR(500),
+    [TableName]             NVARCHAR(500),
+    [KeyColumns]	        NVARCHAR(MAX)
 )
 
 
 IF (OBJECT_ID('tempdb..#Columns') IS NOT NULL) DROP TABLE #Columns
 CREATE TABLE #Columns (
-    [DatabaseName]	    NVARCHAR(500),
-    [SchemaName]        NVARCHAR(500),
-    [TableName]         NVARCHAR(500),
-    [column_id]         INT,
-    [ColumnName]        NVARCHAR(500),
-    [ColumnTypeName]    NVARCHAR(500),
-    [max_length]        SMALLINT,
-    [precision]         TINYINT,
-    [scale]             TINYINT,
-    [collation_name]    NVARCHAR(500),
-    [definition]        NVARCHAR(MAX),
-    [is_computed]       BIT,
-    [is_nullable]       BIT
+    [DatabaseName]	        NVARCHAR(500),
+    [SchemaName]            NVARCHAR(500),
+    [TableName]             NVARCHAR(500),
+    [column_id]             INT,
+    [ColumnName]            NVARCHAR(500),
+    [ColumnTypeName]        NVARCHAR(500),
+    [max_length]            SMALLINT,
+    [precision]             TINYINT,
+    [scale]                 TINYINT,
+    [collation_name]        NVARCHAR(500),
+    [definition]            NVARCHAR(MAX),
+    [is_computed]           BIT,
+    [is_nullable]           BIT
 )
 
 IF (OBJECT_ID('tempdb..#Results') IS NOT NULL) DROP TABLE #Results
 CREATE TABLE #Results (
-    [DatabaseName]      NVARCHAR(500),
-    [SchemaName]	    NVARCHAR(500),
-    [TableName]		    NVARCHAR(500),
-    [KeyValue]		    NVARCHAR(500),
-    [ColumnName]	    NVARCHAR(500),
-    [ValueSource]       SQL_VARIANT,
-    [ValueDestination]  SQL_VARIANT,
-    [Type]			    INT,
-    [TypeDesc]		    NVARCHAR(100)
+    [DatabaseName]          NVARCHAR(500),
+    [SchemaName]	        NVARCHAR(500),
+    [TableName]		        NVARCHAR(500),
+    [KeyValue]		        NVARCHAR(500),
+    [ColumnName]	        NVARCHAR(500),
+    [ValueSource]           SQL_VARIANT,
+    [ValueDestination]      SQL_VARIANT,
+    [Type]			        INT,
+    [TypeDesc]		        NVARCHAR(100)
 )
 
 
