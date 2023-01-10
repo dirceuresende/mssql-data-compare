@@ -25,6 +25,6 @@ VALUES
 )
 
 EXEC dbo.stpDataCompare 
-	@Parameters = @MyParameters,  -- tpDataCompareParameters
+    @Parameters = @MyParameters,  -- tpDataCompareParameters
     @FilterType = NULL,
     @Debug = 1
